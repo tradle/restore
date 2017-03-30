@@ -4,24 +4,30 @@ const co = Promise.coroutine
 const collect = Promise.promisify(require('stream-collector'))
 const through = require('through2')
 const pump = require('pump')
+const omit = require('object.omit')
 const debug = require('debug')('tradle:restore')
 const { typeforce, utils, constants } = require('@tradle/engine')
-const { TYPE } = constants
+const { TYPE, INDEX_SEPARATOR } = constants
 const RESTORE_REQUEST = 'tradle.RestoreRequest'
 const addAuthor = Promise.promisify(utils.addAuthor)
 const conversation = {}
 
-exports.conversation = conversation
-
-conversation.respond = co(function* ({ node, req }) {
+conversation.respond = co(function* ({ node, req, sent, received }) {
   // TODO: support ranges, optimize
+  if (!xor(sent, received)) {
+    throw new Error('expected "sent" OR "received"')
+  }
 
   const validate = Promise.promisify(node.validator.validate)
   // only restore for original conversation participant
   const { from, to } = req
   const me = node.permalink
-  if (me !== from && me !== to) {
-    throw new Error('expected self to be a conversation participant')
+  if (sent && me !== from) {
+    throw new Error('restricted to restoring messages I sent')
+  }
+
+  if (received && me !== to) {
+    throw new Error('restricted to restoring messages I received')
   }
 
   const them = me === from ? to : from
@@ -37,7 +43,7 @@ conversation.respond = co(function* ({ node, req }) {
 
   const { seqs } = req
   const msgs = pump(
-    node.conversation({ with: them, body: false }),
+    streamSent({  node, from, to, body: false }),
     through.obj(function (data, enc, cb) {
       const { value } = data
       const { seq, link } = data
@@ -109,7 +115,7 @@ conversation.monitorMissing = function monitorMissing (opts) {
   return ee
 }
 
-exports.batchifyMonitor = function ({ monitor, debounce=1000 }) {
+function batchifyMonitor ({ monitor, debounce=1000 }) {
   const batch = []
   let fireTimeout
 
@@ -129,6 +135,34 @@ exports.batchifyMonitor = function ({ monitor, debounce=1000 }) {
   })
 
   return monitor
+}
+
+function streamSent (opts) {
+  const { node, from, to } = opts
+  const seqOpts = omit(opts, 'node', 'from', 'to')
+  const base = from + INDEX_SEPARATOR + to
+  seqOpts.gte = base + INDEX_SEPARATOR
+  seqOpts.lte = base + '\xff'
+  return pump(
+    node.objects.seq(seqOpts),
+    through.obj(function (data, enc, cb) {
+      if (data.recipient === to) {
+        cb(null, data)
+      } else {
+        cb()
+      }
+    })
+  )
+}
+
+function xor (a, b) {
+  return a || b && !(a && b)
+}
+
+module.exports = {
+  conversation,
+  streamSent,
+  batchifyMonitor
 }
 
 // exports.missing = co(function* ({ node, from }) {
