@@ -7,6 +7,7 @@
     "bluebird": "^3.5.0",
     "debug": "^2.6.3",
     "object.omit": "^2.0.1",
+    "once": "^1.4.0",
     "pump": "^1.0.2",
     "stream-collector": "^1.0.1",
     "through2": "^2.0.3"

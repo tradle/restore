@@ -28,21 +28,40 @@ test('basic request/respond', co(function* (t) {
 
   yield Promise.all(sends)
 
-  const seqs = [0, 2]
-  const req = yield request({
+  let seqs = [0, 1]
+  let req = yield request({
     node: bob,
     from: alice.permalink,
-    seqs
+    seqs,
+    // "I have up to 3, but i'm also missing 0 and 1
+    tip: 3
   })
 
-  const msgs = yield respond({
+  let msgs = yield respond({
     node: alice,
     req: req.object,
     sent: true
   })
 
-  const receivedSeqs = msgs.map(msg => msg[SEQ])
+  let receivedSeqs = msgs.map(msg => msg[SEQ])
   t.same(receivedSeqs, seqs)
+
+  req = yield request({
+    node: bob,
+    from: alice.permalink,
+    seqs: [],
+    // "i have all messages up to and including 1"
+    tip: 1
+  })
+
+  msgs = yield respond({
+    node: alice,
+    req: req.object,
+    sent: true
+  })
+
+  receivedSeqs = msgs.map(msg => msg[SEQ])
+  t.same(receivedSeqs, [2, 3])
 
   try {
     yield respond({
@@ -85,11 +104,12 @@ test('monitor', co(function* (t) {
     counterparty: alice.permalink
   })
 
-  batchifyMonitor({ monitor, debounce: 100 }).on('batch', co(function* (seqs) {
+  batchifyMonitor({ monitor, debounce: 100 }).on('batch', co(function* ({ tip, seqs }) {
     const req = yield request({
       node: bob,
       from: alice.permalink,
-      seqs
+      seqs,
+      tip
     })
 
     const res = yield respond({
