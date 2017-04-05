@@ -31,7 +31,7 @@ test('basic request/respond', co(function* (t) {
   let seqs = [0, 1]
   let req = yield request({
     node: bob,
-    from: alice.permalink,
+    counterparty: alice.permalink,
     seqs,
     // "I have up to 3, but i'm also missing 0 and 1
     tip: 3
@@ -48,7 +48,7 @@ test('basic request/respond', co(function* (t) {
 
   req = yield request({
     node: bob,
-    from: alice.permalink,
+    counterparty: alice.permalink,
     seqs: [],
     // "i have all messages up to and including 1"
     tip: 1
@@ -107,7 +107,7 @@ test('monitor', co(function* (t) {
   batchifyMonitor({ monitor, debounce: 100 }).on('batch', co(function* ({ tip, seqs }) {
     const req = yield request({
       node: bob,
-      from: alice.permalink,
+      counterparty: alice.permalink,
       seqs,
       tip
     })
