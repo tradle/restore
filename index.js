@@ -76,15 +76,14 @@ conversation.respond = co(function* ({ node, req, sent, received }) {
  * @return {Promise}              Promise that resolves to signed request object
  */
 conversation.request = co(function* (opts) {
-  const { node, counterparty, outbound, seqs, tip } = opts
+  const { node, counterparty, outbound, seqs=[], tip } = opts
   const sign = Promise.promisify(node.sign.bind(node))
-  return sign({
-    object: extend({
-      [TYPE]: RESTORE_REQUEST,
-      seqs,
-      tip
-    }, getFromTo(opts))
-  })
+  const object = getFromTo(opts)
+  object[TYPE] = RESTORE_REQUEST
+  object.seqs = seqs
+  if (typeof tip !== 'undefined') object.tip = tip
+
+  return sign({ object })
 })
 
 conversation.monitorMissing = function monitorMissing (opts) {
