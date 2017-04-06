@@ -135,7 +135,7 @@ conversation.monitorMissing = function monitorMissing (opts) {
   return ee
 
   function onMissing (seq) {
-    if (typeof tip === undefined) {
+    if (typeof tip === 'undefined') {
       ee.once('tip', () => onMissing(seq))
       return
     }
