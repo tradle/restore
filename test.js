@@ -1,12 +1,13 @@
 
-const Promise = require('bluebird')
-const co = Promise.coroutine
+const Promise = require('any-promise')
+const co = require('co').wrap
 const test = require('tape')
 const contexts = require('@tradle/engine/test/contexts')
 const helpers = require('@tradle/engine/test/helpers')
 const { utils, constants } = require('@tradle/engine')
 const { TYPE, SEQ } = constants
-const makeFriends = Promise.promisify(contexts.nFriends)
+const promisify = require('pify')
+const makeFriends = promisify(contexts.nFriends)
 const { conversation, batchifyMonitor } = require('./')
 const { request, respond, monitorMissing } = conversation
 const noop = function () {}

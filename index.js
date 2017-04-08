@@ -1,7 +1,8 @@
 const { EventEmitter } = require('events')
-const Promise = require('bluebird')
-const co = Promise.coroutine
-const collect = Promise.promisify(require('stream-collector'))
+const Promise = require('any-promise')
+const co = require('co').wrap
+const promisify = require('pify')
+const collect = promisify(require('stream-collector'))
 const through = require('through2')
 const pump = require('pump')
 const omit = require('object.omit')
@@ -11,7 +12,7 @@ const extend = require('xtend/mutable')
 const { typeforce, utils, constants } = require('@tradle/engine')
 const { TYPE, INDEX_SEPARATOR } = constants
 const RESTORE_REQUEST = 'tradle.RestoreRequest'
-const addAuthor = Promise.promisify(utils.addAuthor)
+const addAuthor = promisify(utils.addAuthor)
 const conversation = {}
 
 conversation.respond = co(function* ({ node, req, sent, received }) {
@@ -20,7 +21,7 @@ conversation.respond = co(function* ({ node, req, sent, received }) {
     throw new Error('expected "sent" OR "received"')
   }
 
-  const validate = Promise.promisify(node.validator.validate)
+  const validate = promisify(node.validator.validate)
   // only restore for original conversation participant
   const { from, to } = req
   const me = node.permalink
@@ -77,7 +78,7 @@ conversation.respond = co(function* ({ node, req, sent, received }) {
  */
 conversation.request = co(function* (opts) {
   const { node, counterparty, outbound, seqs=[], tip } = opts
-  const sign = Promise.promisify(node.sign.bind(node))
+  const sign = promisify(node.sign.bind(node))
   const object = getFromTo(opts)
   object[TYPE] = RESTORE_REQUEST
   object.seqs = seqs
