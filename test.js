@@ -136,3 +136,44 @@ test('monitor', co(function* (t) {
 
   yield Promise.all(sends)
 }))
+
+test('only restore unsent', co(function* (t) {
+  const friends = yield makeFriends(2)
+  const [alice, bob] = friends.map(utils.promisifyNode)
+
+  alice._send = function (msg, recipientInfo, cb) {
+    alice._send = function (msg, recipientInfo, cb) {
+      // hang on 2nd
+    }
+
+    bob.receive(msg, alice._recipientOpts, cb)
+  }
+
+  bob.on('message', co(function* () {
+    const req = yield request({
+      node: bob,
+      counterparty: alice.permalink,
+      seqs: [0, 1]
+    })
+
+    const res = yield respond({
+      node: alice,
+      req: req.object,
+      sent: true
+    })
+
+    t.equal(res.length, 1)
+    t.equal(res[0][SEQ], 0)
+    t.end()
+  }))
+
+  new Array(2).fill(0).map((n, i) => {
+    return alice.signAndSend({
+      to: bob._recipientOpts,
+      object: {
+        [TYPE]: 'something',
+        count: i
+      }
+    })
+  })
+}))

@@ -10,6 +10,7 @@ const debug = require('debug')('tradle:restore')
 const once = require('once')
 const extend = require('xtend/mutable')
 const { typeforce, utils, constants } = require('@tradle/engine')
+const Status = require('@tradle/engine/lib/status')
 const { TYPE, INDEX_SEPARATOR } = constants
 const RESTORE_REQUEST = 'tradle.RestoreRequest'
 const addAuthor = promisify(utils.addAuthor)
@@ -220,10 +221,21 @@ function streamSent (opts) {
   const base = from + INDEX_SEPARATOR + to
   seqOpts.gte = base + INDEX_SEPARATOR
   seqOpts.lte = base + '\xff'
+  const source = node.objects.bySeq(seqOpts)
+
+  let ended
   return pump(
-    node.objects.bySeq(seqOpts),
+    source,
     through.obj(function (data, enc, cb) {
+      if (ended) return cb()
       if (data.recipient === to) {
+        if (data.sendstatus === Status.send.pending) {
+          debug('reached unsent message, terminating stream')
+          ended = true
+          source.end()
+          return cb()
+        }
+
         cb(null, data)
       } else {
         cb()
